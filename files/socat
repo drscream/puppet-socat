@@ -1,0 +1,122 @@
+#! /bin/sh
+#
+# socat         Startup script for the socat
+#
+#
+ 
+NAME=socat
+DESC=socat
+DAEMON=/usr/bin/socat
+LIB=/usr/lib/socat
+SOCAT_ARGS="-d -d -lmlocal2"
+ 
+[ ! -f /etc/default/socat ] || . /etc/default/socat
+ 
+. /lib/lsb/init-functions
+ 
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+ 
+[ -x $DAEMON ] || exit 0
+ 
+#
+#       Try to increase the # of filedescriptors we can open.
+#
+maxfds () {
+        [ -n "$SOCAT_MAXFD" ] || return
+        [ -f /proc/sys/fs/file-max ] || return 0
+        [ $SOCAT_MAXFD -le 4096 ] || SQUID_MAXFD=4096
+        global_file_max=`cat /proc/sys/fs/file-max`
+        minimal_file_max=$(($SOCAT_MAXFD + 4096))
+        if [ "$global_file_max" -lt $minimal_file_max ]
+        then
+                echo $minimal_file_max > /proc/sys/fs/file-max
+        fi
+        ulimit -n $SOCAT_MAXFD
+}
+ 
+start_socat() {
+        start-stop-daemon --quiet --start \
+                --pidfile /var/run/socat.$NAME.pid \
+                --background --make-pidfile \
+                --exec $DAEMON -- $SOCAT_ARGS $ARGS < /dev/null
+}
+ 
+stop_socat() {
+        start-stop-daemon --stop --quiet --pidfile /var/run/socat.$NAME.pid --exec $DAEMON
+        rm -f /var/run/socat.$NAME.pid
+}
+ 
+status_socat () {
+        for PIDFILE in `ls /var/run/socat.*.pid 2> /dev/null`; do
+                status_of_proc -p $PIDFILE /usr/bin/socat socat && exit 0 || exit $?
+        done
+}
+ 
+start () {
+        echo "Starting $DESC:"
+ 
+        maxfds
+        umask 027
+        cd /tmp
+        if test "x$AUTOSTART" = "xnone" -o -z "x$AUTOSTART" ; then
+                echo "Autostart disabled."
+                exit 0
+        fi
+        for NAME in $AUTOSTART ; do
+                ARGS=`eval echo \\\$SOCAT_$NAME`
+                echo $ARGS
+                start_socat
+                echo " $NAME $ARGS"
+        done
+        return $?
+}
+ 
+stop () {
+        echo -n "Stopping $DESC:"
+ 
+        for PIDFILE in `ls /var/run/socat.*.pid 2> /dev/null`; do
+                NAME=`echo $PIDFILE | cut -c16-`
+                NAME=${NAME%%.pid}
+                stop_socat
+                echo -n " $NAME"
+        done
+}
+ 
+
+case "$1" in
+    start)
+        log_daemon_msg "Starting socat" "socat"
+        if start ; then
+                log_end_msg $?
+        else
+                log_end_msg $?
+        fi
+        ;;
+    stop)
+        log_daemon_msg "Stopping socat" "socat"
+        if stop ; then
+                log_end_msg $?
+        else
+                log_end_msg $?
+        fi
+        ;;
+    status)
+        log_daemon_msg "Status of socat" "socat"
+        status_socat
+        ;;
+    reload|force-reload|restart)
+        log_daemon_msg "Restarting socat" "socat"
+        stop
+        if start ; then
+                log_end_msg $?
+        else
+                log_end_msg $?
+        fi
+        ;;
+    *)
+        echo "Usage: /etc/init.d/$NAME {start|stop|reload|force-reload|restart}"
+        exit 3
+        ;;
+esac
+ 
+exit 0

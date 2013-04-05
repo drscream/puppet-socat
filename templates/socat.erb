@@ -1,0 +1,7 @@
+AUTOSTART=default
+ 
+<% if has_variable?("param") -%>
+SOCAT_default="<%= param %>"
+<% else -%>
+SOCAT_default=""
+<% end -%>
