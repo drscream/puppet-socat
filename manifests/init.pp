@@ -17,14 +17,6 @@ class socat ( $param='' ) {
 		content => template('socat/socat.erb'),
 	}
 
-	file { '/var/run/mysqld':
-		ensure => directory,
-		owner  => nobody,
-		group  => daemon,
-		mode   => 755,
-		before => Service['socat'],
-	}
-
 	service { 'socat':
 		ensure    => running,
 		enable    => true,
