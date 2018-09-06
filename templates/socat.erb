@@ -1,7 +1,5 @@
-AUTOSTART=default
- 
-<% if has_variable?("param") -%>
-SOCAT_default="<%= param %>"
-<% else -%>
-SOCAT_default=""
+AUTOSTART="<%=@params.keys.join ' '%>"
+
+<% @params.each do |name, param|%>
+SOCAT_<%=name%>="<%= param %>"
 <% end -%>
